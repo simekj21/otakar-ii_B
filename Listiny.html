@@ -271,7 +271,7 @@ function processXlsx(file) {
 
       // Filtrujeme pouze potřebné sloupce (xlsx má stovky prázdných sloupců)
       const COLS = ['no','sicherheit','Periode','datum_text','tag_post','monat_post','jahr_post',
-        'feiertag','lokalitat_name','lokalitat_x','lokalitat_y','lokalitat_region',
+        'feiertag','lokalitat_name_text','lokalitat_x','lokalitat_y','lokalitat_region',
         'lokalität_histland','kurzes_regest','beschenkte_institution_text',
         'bi1_lokalitatname','bi1_x','bi1_y','bi1_region','bi1_histland',
         'bi2_lokalitatname','bi2_region','bi2_histland',
@@ -381,7 +381,7 @@ function initFilters() {
 
   const places = new Set();
   ALL_DATA.forEach(d => {
-    if (d.lokalitat_name && d.lokalitat_name !== '???') places.add(d.lokalitat_name);
+    if (d.lokalitat_name_text && d.lokalitat_name_text !== '???') places.add(d.lokalitat_name_text);
   });
   const placeSelect = document.getElementById('place-select');
   placeSelect.innerHTML = '<option value="">Všechna</option>';
@@ -420,7 +420,7 @@ function getFilteredData() {
   return ALL_DATA.filter(d => {
     if (issuer && d.poII_aussteller !== issuer) return false;
     if (periode && d.Periode !== periode) return false;
-    if (place && d.lokalitat_name !== place) return false;
+    if (place && d.lokalitat_name_text !== place) return false;
 
     if (regestSearch) {
       const regest = (d.kurzes_regest || '').toLowerCase();
@@ -441,7 +441,7 @@ function renderRows(pageData) {
   return pageData.map(d => `
     <tr>
       <td><strong>${d.datum_text || '?'}</strong></td>
-      <td>${d.lokalitat_name || '?'}</td>
+      <td>${d.lokalitat_name_text || '?'}</td>
       <td><small>${(d.kurzes_regest || '').substring(0, 80)}</small></td>
       <td><small>${(d.beschenkte_institution_text || '').substring(0, 50)}</small></td>
       <td>${d.verfalscht ? '✗' : '✓'}</td>
