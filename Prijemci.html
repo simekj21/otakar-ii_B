@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Příjemci listin — Itinerář Otakara II.</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #f5f3ef;
+  --surface: #ffffff;
+  --card: #f8f6f2;
+  --border: #e0dbd0;
+  --border2: #ccc7bb;
+  --accent: #e05c5c;
+  --accent2: #c94444;
+  --accent-dim: #f0a0a0;
+  --accent-bg: rgba(224, 92, 92, 0.08);
+  --text: #1a1614;
+  --text2: #4a4240;
+  --text3: #888078;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text); font-family: 'Lora', Georgia, serif; }
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; min-height: 100vh; }
+
+.header { background: var(--accent); color: white; padding: 24px; border-radius: 8px; margin-bottom: 24px; }
+.header h1 { font-family: 'Montserrat', sans-serif; font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+.header p { font-size: 14px; opacity: 0.95; }
+
+.filters { background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 24px; display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+.filter-group { display: flex; flex-direction: column; gap: 6px; }
+.filter-group label { font-size: 12px; font-weight: 600; color: var(--accent); text-transform: uppercase; font-family: 'Montserrat', sans-serif; }
+.filter-group select { padding: 8px 12px; border: 1px solid var(--border2); border-radius: 4px; font-family: 'Lora', serif; font-size: 14px; color: var(--text); background: white; cursor: pointer; min-width: 180px; }
+.filter-group select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+
+.btn-reset { padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 4px; font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; text-transform: uppercase; }
+.btn-reset:hover { background: var(--accent2); }
+
+.dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+.card { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+.card h2 { font-family: 'Montserrat', sans-serif; font-size: 14px; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 10px; }
+.wide { grid-column: 1 / -1; }
+
+.metric { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+.metric:last-child { border-bottom: none; }
+.metric-label { font-size: 13px; color: var(--text3); }
+.metric-value { font-family: 'Montserrat', sans-serif; font-size: 14px; font-weight: 700; color: var(--accent); }
+
+.chart-container { position: relative; width: 100%; height: 360px; margin-top: 12px; }
+.chart-container.tall { height: 460px; }
+
+/* Matice zemí */
+.matrix-scroll { overflow-x: auto; margin-top: 8px; }
+.matrix-table { border-collapse: collapse; font-size: 11px; font-family: 'Montserrat', sans-serif; }
+.matrix-table th { background: var(--card); padding: 6px 8px; text-align: center; font-weight: 600; color: var(--text2); border: 1px solid var(--border); white-space: nowrap; }
+.matrix-table th.row-header { text-align: left; min-width: 120px; color: var(--accent); }
+.matrix-table td { padding: 5px 8px; border: 1px solid var(--border); text-align: center; font-weight: 600; color: var(--text); min-width: 36px; cursor: default; }
+.matrix-table td.row-label { text-align: left; font-weight: 600; color: var(--text2); background: var(--card); white-space: nowrap; padding-right: 12px; }
+.matrix-table td.zero { color: #ddd; background: white; font-weight: 400; }
+.matrix-legend { display: flex; gap: 16px; margin-top: 10px; font-size: 11px; color: var(--text3); font-family: 'Montserrat', sans-serif; align-items: center; flex-wrap: wrap; }
+.matrix-legend-item { display: flex; align-items: center; gap: 4px; }
+.matrix-legend-swatch { width: 20px; height: 14px; border-radius: 2px; border: 1px solid var(--border); }
+
+/* Bod 4 – interaktivní výběr místa */
+.place-selector { margin-bottom: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.place-selector label { font-size: 12px; font-weight: 600; color: var(--accent); text-transform: uppercase; font-family: 'Montserrat', sans-serif; white-space: nowrap; }
+.place-selector select { padding: 8px 12px; border: 1px solid var(--border2); border-radius: 4px; font-family: 'Lora', serif; font-size: 14px; color: var(--text); min-width: 240px; }
+.place-selector select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+
+.regest-list { margin-top: 16px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.regest-item { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12px; }
+.regest-item:last-child { border-bottom: none; }
+.regest-item:hover { background: var(--card); }
+.regest-item .regest-date { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 11px; color: var(--accent); margin-bottom: 3px; }
+.regest-item .regest-recip { font-weight: 600; color: var(--text2); margin-bottom: 2px; }
+.regest-item .regest-text { color: var(--text3); }
+
+.bar { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.bar-label { font-size: 12px; color: var(--text2); min-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-fill { height: 20px; background: linear-gradient(90deg, var(--accent), var(--accent-dim)); border-radius: 3px; min-width: 2px; }
+.bar-value { font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600; color: var(--accent); min-width: 24px; text-align: right; }
+
+.note { font-size: 11px; color: var(--text3); margin-top: 8px; font-style: italic; }
+
+@media (max-width: 768px) {
+  .dashboard { grid-template-columns: 1fr; }
+  .filters { flex-direction: column; }
+  .filter-group select { min-width: auto; width: 100%; }
+  .place-selector select { min-width: 100%; width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>Příjemci listin Otakara II.</h1>
+    <p>Body 4–6 analýzy — vztah místa, regionu a země vydání k příjemcům</p>
+  </div>
+
+  <div class="filters">
+    <div class="filter-group">
+      <label>Časové období</label>
+      <select id="periode-select">
+        <option value="">Všechna období</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Vydavatel</label>
+      <select id="issuer-select">
+        <option value="">Všichni</option>
+        <option value="Ja">Přemysl Otakar II.</option>
+        <option value="-">Jiní</option>
+      </select>
+    </div>
+    <button class="btn-reset" onclick="resetFilters()">↺ Resetovat</button>
+  </div>
+
+  <div class="dashboard">
+
+    <div class="card">
+      <h2>Přehled</h2>
+      <div class="metric">
+        <span class="metric-label">Listin celkem</span>
+        <span class="metric-value" id="stat-total">—</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">S určeným příjemcem</span>
+        <span class="metric-value" id="stat-with-recip">—</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Příjemců (bi1)</span>
+        <span class="metric-value" id="stat-uniq-recip">—</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Regionů příjemce</span>
+        <span class="metric-value" id="stat-uniq-region">—</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Zemí příjemce</span>
+        <span class="metric-value" id="stat-uniq-land">—</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Top 8 příjemců (bi1)</h2>
+      <div id="top-recipients"></div>
+    </div>
+
+    <div class="card wide">
+      <h2>Bod 6 — Země vydání × Země příjemce</h2>
+      <p class="note">Počet listin vydaných v dané zemi pro příjemce z dané země. Zahrnuje bi1 a bi2.</p>
+      <div class="matrix-scroll">
+        <div id="matrix-country"></div>
+      </div>
+      <div class="matrix-legend" id="matrix-legend"></div>
+    </div>
+
+    <div class="card wide">
+      <h2>Bod 5 — Region vydání → Region příjemce (top 10 regionů vydání)</h2>
+      <p class="note">Zobrazeno 10 nejčastějších regionů vydání, segmenty = regiony příjemců (bi1 + bi2 + bi3).</p>
+      <div class="chart-container tall">
+        <canvas id="chart-region"></canvas>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <h2>Bod 4 — Místo vydání → Příjemci</h2>
+      <div class="place-selector">
+        <label>Místo vydání:</label>
+        <select id="place-select" onchange="updatePlaceDetail()">
+          <option value="">— vyberte místo —</option>
+        </select>
+      </div>
+      <div id="place-chart-wrap" style="display:none">
+        <div class="chart-container">
+          <canvas id="chart-place"></canvas>
+        </div>
+        <div id="place-regest-list" class="regest-list" style="margin-top:16px; max-height:400px; overflow-y:auto"></div>
+      </div>
+      <div id="place-empty" style="color:var(--text3); font-size:13px; padding:12px 0">Vyberte místo vydání pro zobrazení příjemců a listin.</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let ALL_DATA = [];
+let chartRegion = null;
+let chartPlace = null;
+
+const CHART_COLORS = [
+  '#e05c5c','#4a90d9','#f0a040','#5cb870','#9b59b6',
+  '#1abc9c','#e67e22','#3498db','#e91e63','#607d8b'
+];
+
+function getFiltered() {
+  const periode = document.getElementById('periode-select').value;
+  const issuer = document.getElementById('issuer-select').value;
+  return ALL_DATA.filter(d => {
+    if (periode && d.Periode !== periode) return false;
+    if (issuer && d.poII_aussteller !== issuer) return false;
+    return true;
+  });
+}
+
+// Pro každý záznam vrať páry (issueVal, recipVal) pro dané sloupce
+function buildPairCounts(data, issueField, recipFields) {
+  const pairs = {};
+  data.forEach(d => {
+    const issue = d[issueField];
+    if (!issue) return;
+    recipFields.forEach(rf => {
+      const recip = d[rf];
+      if (!recip) return;
+      if (!pairs[issue]) pairs[issue] = {};
+      pairs[issue][recip] = (pairs[issue][recip] || 0) + 1;
+    });
+  });
+  return pairs;
+}
+
+function updateSummary(data) {
+  document.getElementById('stat-total').textContent = data.length;
+  const withRecip = data.filter(d => d.bi1_lokalitatname).length;
+  document.getElementById('stat-with-recip').textContent = withRecip;
+  document.getElementById('stat-uniq-recip').textContent =
+    new Set(data.map(d => d.bi1_lokalitatname).filter(Boolean)).size;
+  document.getElementById('stat-uniq-region').textContent =
+    new Set(data.map(d => d.bi1_region).filter(Boolean)).size;
+  document.getElementById('stat-uniq-land').textContent =
+    new Set(data.map(d => d.bi1_histland).filter(Boolean)).size;
+
+  const recipCounts = {};
+  data.forEach(d => {
+    if (d.bi1_lokalitatname) recipCounts[d.bi1_lokalitatname] = (recipCounts[d.bi1_lokalitatname] || 0) + 1;
+  });
+  const top = Object.entries(recipCounts).sort((a,b) => b[1]-a[1]).slice(0, 8);
+  const maxVal = top[0]?.[1] || 1;
+  document.getElementById('top-recipients').innerHTML = top.map(([r, c]) => `
+    <div class="bar">
+      <span class="bar-label" title="${r}">${r.length > 28 ? r.substring(0,25)+'…' : r}</span>
+      <div class="bar-fill" style="width:${Math.max(4,(c/maxVal)*120)}px"></div>
+      <span class="bar-value">${c}</span>
+    </div>`).join('') || '<p style="color:var(--text3);font-size:13px">Žádná data</p>';
+}
+
+function updateCountryMatrix(data) {
+  const pairs = buildPairCounts(data, 'lokalität_histland', ['bi1_histland', 'bi2_histland']);
+
+  const issueCountries = Object.keys(pairs).sort();
+  const recipCountries = [...new Set(
+    Object.values(pairs).flatMap(v => Object.keys(v))
+  )].sort();
+
+  if (!issueCountries.length) {
+    document.getElementById('matrix-country').innerHTML = '<p style="color:var(--text3);font-size:13px">Žádná data</p>';
+    return;
+  }
+
+  let maxVal = 0;
+  issueCountries.forEach(ic => {
+    recipCountries.forEach(rc => {
+      maxVal = Math.max(maxVal, pairs[ic]?.[rc] || 0);
+    });
+  });
+
+  let html = '<table class="matrix-table"><thead><tr>';
+  html += '<th class="row-header">Vydání \\ Příjemce</th>';
+  recipCountries.forEach(rc => {
+    html += `<th title="${rc}">${rc.length > 10 ? rc.substring(0,9)+'…' : rc}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  issueCountries.forEach(ic => {
+    html += `<tr><td class="row-label">${ic}</td>`;
+    recipCountries.forEach(rc => {
+      const val = pairs[ic]?.[rc] || 0;
+      if (val === 0) {
+        html += '<td class="zero">—</td>';
+      } else {
+        const opacity = 0.15 + 0.85 * (val / maxVal);
+        html += `<td style="background:rgba(224,92,92,${opacity.toFixed(2)})" title="${ic} → ${rc}: ${val} listin">${val}</td>`;
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('matrix-country').innerHTML = html;
+
+  document.getElementById('matrix-legend').innerHTML = `
+    <div class="matrix-legend-item"><div class="matrix-legend-swatch" style="background:rgba(224,92,92,0.15)"></div> 1 listina</div>
+    <div class="matrix-legend-item"><div class="matrix-legend-swatch" style="background:rgba(224,92,92,0.5)"></div> střední</div>
+    <div class="matrix-legend-item"><div class="matrix-legend-swatch" style="background:rgba(224,92,92,1.0)"></div> maximum (${maxVal})</div>
+  `;
+}
+
+function updateRegionChart(data) {
+  const pairs = buildPairCounts(data, 'lokalitat_region', ['bi1_region', 'bi2_region', 'bi3_region']);
+
+  // Top 10 regionů vydání podle celkového počtu
+  const issueTotals = Object.entries(pairs)
+    .map(([k, v]) => [k, Object.values(v).reduce((a,b) => a+b, 0)])
+    .sort((a,b) => b[1]-a[1]).slice(0,10);
+
+  if (!issueTotals.length) return;
+
+  // Všechny regiony příjemce přes top 10 vydání
+  const allRecipRegions = {};
+  issueTotals.forEach(([ir]) => {
+    Object.entries(pairs[ir] || {}).forEach(([rr, c]) => {
+      allRecipRegions[rr] = (allRecipRegions[rr] || 0) + c;
+    });
+  });
+  // Top 8 příjemeckých regionů, zbytek = Ostatní
+  const topRecip = Object.entries(allRecipRegions).sort((a,b) => b[1]-a[1]).slice(0,8).map(x => x[0]);
+
+  const labels = issueTotals.map(x => x[0]);
+  const datasets = topRecip.map((rr, i) => ({
+    label: rr,
+    data: issueTotals.map(([ir]) => pairs[ir]?.[rr] || 0),
+    backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+    borderWidth: 0
+  }));
+
+  // "Ostatní" dataset
+  const ostatniData = issueTotals.map(([ir]) => {
+    const total = Object.entries(pairs[ir] || {})
+      .filter(([rr]) => !topRecip.includes(rr))
+      .reduce((a,[,c]) => a+c, 0);
+    return total;
+  });
+  if (ostatniData.some(v => v > 0)) {
+    datasets.push({ label: 'Ostatní', data: ostatniData, backgroundColor: '#ccc7bb', borderWidth: 0 });
+  }
+
+  if (chartRegion) chartRegion.destroy();
+  chartRegion = new Chart(document.getElementById('chart-region'), {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { family: 'Montserrat', size: 11 }, boxWidth: 14 } }
+      },
+      scales: {
+        x: { stacked: true, beginAtZero: true, ticks: { font: { family: 'Montserrat', size: 11 } } },
+        y: { stacked: true, ticks: { font: { family: 'Montserrat', size: 11 } } }
+      }
+    }
+  });
+}
+
+function updatePlaceDetail() {
+  const place = document.getElementById('place-select').value;
+  const wrap = document.getElementById('place-chart-wrap');
+  const empty = document.getElementById('place-empty');
+
+  if (!place) {
+    wrap.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+  wrap.style.display = 'block';
+  empty.style.display = 'none';
+
+  const data = getFiltered().filter(d => d.lokalitat_name === place);
+
+  // Počet příjemců
+  const recipCounts = {};
+  data.forEach(d => {
+    ['bi1_lokalitatname','bi2_lokalitatname','bi3_lokalitatname'].forEach(f => {
+      if (d[f]) recipCounts[d[f]] = (recipCounts[d[f]] || 0) + 1;
+    });
+  });
+  const sorted = Object.entries(recipCounts).sort((a,b) => b[1]-a[1]).slice(0,15);
+
+  if (chartPlace) chartPlace.destroy();
+  chartPlace = new Chart(document.getElementById('chart-place'), {
+    type: 'bar',
+    data: {
+      labels: sorted.map(x => x[0].length > 35 ? x[0].substring(0,32)+'…' : x[0]),
+      datasets: [{ label: 'Počet listin', data: sorted.map(x => x[1]),
+        backgroundColor: '#e05c5c', borderColor: '#c94444', borderWidth: 0 }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { beginAtZero: true, ticks: { font: { family: 'Montserrat', size: 11 } } },
+        y: { ticks: { font: { family: 'Montserrat', size: 11 } } }
+      }
+    }
+  });
+
+  // Tabulka listin
+  const listHtml = data.slice(0,30).map(d => `
+    <div class="regest-item">
+      <div class="regest-date">${d.datum_text || '?'} &nbsp;·&nbsp; ${d.Periode || ''}</div>
+      <div class="regest-recip">${d.beschenkte_institution_text || d.bi1_lokalitatname || '—'}</div>
+      <div class="regest-text">${(d.kurzes_regest || '').substring(0,150)}${(d.kurzes_regest||'').length > 150 ? '…' : ''}</div>
+    </div>`).join('');
+  document.getElementById('place-regest-list').innerHTML =
+    listHtml || '<div style="padding:12px;color:var(--text3)">Žádné listiny</div>';
+}
+
+function updateAll() {
+  const data = getFiltered();
+  updateSummary(data);
+  updateCountryMatrix(data);
+  updateRegionChart(data);
+
+  // Re-populate place dropdown dle filtru
+  const placeSelect = document.getElementById('place-select');
+  const prev = placeSelect.value;
+  placeSelect.innerHTML = '<option value="">— vyberte místo —</option>';
+  const places = [...new Set(data.map(d => d.lokalitat_name).filter(Boolean))].sort();
+  places.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p; opt.textContent = p;
+    placeSelect.appendChild(opt);
+  });
+  placeSelect.value = prev;
+  updatePlaceDetail();
+}
+
+function resetFilters() {
+  document.getElementById('periode-select').value = '';
+  document.getElementById('issuer-select').value = '';
+  updateAll();
+}
+
+document.getElementById('periode-select').addEventListener('change', updateAll);
+document.getElementById('issuer-select').addEventListener('change', updateAll);
+
+fetch('listiny_data.json')
+  .then(r => r.json())
+  .then(data => {
+    ALL_DATA = data;
+    // Naplnit dropdown period
+    const sel = document.getElementById('periode-select');
+    const periods = [...new Set(ALL_DATA.map(d => d.Periode).filter(Boolean))].sort();
+    periods.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p; opt.textContent = p;
+      sel.appendChild(opt);
+    });
+    updateAll();
+  });
+</script>
+
+</body>
+</html>
