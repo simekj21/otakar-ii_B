@@ -262,12 +262,27 @@ function processXlsx(file) {
       const wb = XLSX.read(data, { type: 'array' });
       // Čteme konkrétní list PO II G def, fallback na první list
       const ws = wb.Sheets['PO II G def'] || wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { defval: null });
+      const rawRows = XLSX.utils.sheet_to_json(ws, { defval: null });
 
-      if (!rows.length) {
+      if (!rawRows.length) {
         setUploadStatus('Chyba: tabulka je prázdná', 'error');
         return;
       }
+
+      // Filtrujeme pouze potřebné sloupce (xlsx má stovky prázdných sloupců)
+      const COLS = ['no','sicherheit','Periode','datum_text','tag_post','monat_post','jahr_post',
+        'feiertag','lokalitat_name','lokalitat_x','lokalitat_y','lokalitat_region',
+        'lokalität_histland','kurzes_regest','beschenkte_institution_text',
+        'bi1_lokalitatname','bi1_x','bi1_y','bi1_region','bi1_histland',
+        'bi2_lokalitatname','bi2_region','bi2_histland',
+        'bi3_lokalitatname','bi3_region','poII_aussteller','verfalscht'];
+      const rows = rawRows
+        .filter(r => r['no'] != null)
+        .map(r => {
+          const d = {};
+          COLS.forEach(k => { let v = r[k]; d[k] = (v === 'xxx' || v === '') ? null : (v ?? null); });
+          return d;
+        });
 
       ALL_DATA = rows;
       pendingRows = rows;
