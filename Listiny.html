@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Seznam listin — Itinerář Otakara II.</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root {
   --bg: #f5f3ef;
@@ -20,15 +19,41 @@
   --text: #1a1614;
   --text2: #4a4240;
   --text3: #888078;
+  --green: #2d7a4f;
+  --green-bg: rgba(45, 122, 79, 0.08);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { background: var(--bg); color: var(--text); font-family: 'Lora', Georgia, serif; }
 .container { max-width: 1400px; margin: 0 auto; padding: 20px; min-height: 100vh; }
 
-.header { background: var(--accent); color: white; padding: 24px; border-radius: 8px; margin-bottom: 24px; }
-.header h1 { font-family: 'Montserrat', sans-serif; font-size: 24px; font-weight: 700; margin-bottom: 4px; }
-.header p { font-size: 14px; opacity: 0.95; }
+.header { background: var(--accent); color: white; padding: 24px; border-radius: 8px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.header-text h1 { font-family: 'Montserrat', sans-serif; font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+.header-text p { font-size: 14px; opacity: 0.95; }
+.btn-upload-toggle { padding: 8px 14px; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); border-radius: 4px; font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600; cursor: pointer; text-transform: uppercase; white-space: nowrap; transition: background 0.15s; }
+.btn-upload-toggle:hover { background: rgba(255,255,255,0.3); }
+
+.upload-panel { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px; display: none; }
+.upload-panel.open { display: block; }
+.upload-panel h3 { font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+.upload-zone { border: 2px dashed var(--border2); border-radius: 6px; padding: 24px; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: var(--accent-bg); }
+.upload-zone p { font-size: 13px; color: var(--text3); margin-bottom: 8px; }
+.upload-zone .upload-hint { font-size: 11px; color: var(--text3); font-family: 'Montserrat', sans-serif; }
+#file-input { display: none; }
+.upload-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+.btn-action { padding: 8px 16px; border: none; border-radius: 4px; font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600; cursor: pointer; text-transform: uppercase; transition: background 0.15s; }
+.btn-green { background: var(--green); color: white; }
+.btn-green:hover { background: #235f3c; }
+.btn-green:disabled { background: #aaa; cursor: not-allowed; }
+.upload-status { font-size: 12px; color: var(--text3); font-family: 'Montserrat', sans-serif; }
+.upload-status.success { color: var(--green); }
+.upload-status.error { color: var(--accent); }
+.upload-info { font-size: 11px; color: var(--text3); margin-top: 10px; line-height: 1.6; background: var(--card); border-radius: 4px; padding: 10px 12px; }
+.upload-save { display: flex; gap: 8px; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+.btn-blue { background: #2c5f8a; color: white; }
+.btn-blue:hover { background: #1e4266; }
+.btn-blue:disabled { background: #aaa; cursor: not-allowed; }
 
 .filters { background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; align-items: flex-end; }
 .filter-group { display: flex; flex-direction: column; gap: 6px; }
@@ -48,6 +73,8 @@ html, body { background: var(--bg); color: var(--text); font-family: 'Lora', Geo
 .data-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
 .data-table tr:hover { background: var(--card); }
 
+.loading { text-align: center; padding: 40px; color: var(--text3); font-family: 'Montserrat', sans-serif; font-size: 13px; }
+
 .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 16px; align-items: center; flex-wrap: wrap; }
 .pagination button, .pagination span { padding: 6px 10px; border: 1px solid var(--border2); border-radius: 4px; background: white; cursor: pointer; font-family: 'Montserrat', sans-serif; font-size: 12px; font-weight: 600; }
 .pagination button:hover { background: var(--accent-bg); border-color: var(--accent); }
@@ -62,53 +89,37 @@ html, body { background: var(--bg); color: var(--text); font-family: 'Lora', Geo
   .filters { grid-template-columns: 1fr; }
   .container { padding: 12px; }
   .header { padding: 16px; margin-bottom: 16px; }
-  .header h1 { font-size: 20px; }
+  .header-text h1 { font-size: 20px; }
   .data-table { font-size: 11px; }
   .data-table td { padding: 6px 8px; }
   .btn-reset { padding: 10px 12px; }
 }
-
-.header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-.btn-update { padding: 8px 16px; background: white; color: var(--accent); border: 2px solid white; border-radius: 4px; font-family: 'Montserrat', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; text-transform: uppercase; white-space: nowrap; }
-.btn-update:hover { background: rgba(255,255,255,0.85); }
-
-.upload-panel { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px; }
-.upload-panel h3 { font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 16px; letter-spacing: 0.5px; }
-.drop-zone { border: 2px dashed var(--border2); border-radius: 6px; padding: 32px 20px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
-.drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: var(--accent-bg); }
-.drop-zone p { color: var(--accent); font-size: 14px; margin-bottom: 6px; }
-.drop-zone small { color: var(--text3); font-size: 12px; }
-.upload-actions { display: flex; gap: 10px; margin-top: 14px; align-items: center; flex-wrap: wrap; }
-.btn-dl { padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 4px; font-family: 'Montserrat', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; text-transform: uppercase; }
-.btn-dl:hover { background: var(--accent2); }
-.upload-status { font-size: 12px; color: var(--text3); font-family: 'Montserrat', sans-serif; }
-.upload-status.ok { color: #3a8a3a; }
-.upload-status.err { color: var(--accent2); }
 </style>
 </head>
 <body>
 
 <div class="container">
   <div class="header">
-    <div class="header-row">
-      <div>
-        <h1>📋 Seznam listin Otakara II.</h1>
-        <p>Veškeré listiny s pokročilým filtrováním a stránkováním</p>
-      </div>
-      <button class="btn-update" onclick="toggleUploadPanel()">↑ Aktualizovat data</button>
+    <div class="header-text">
+      <h1>📋 Seznam listin Otakara II.</h1>
+      <p>Veškeré listiny s pokročilým filtrováním a stránkováním</p>
     </div>
+    <button class="btn-upload-toggle" onclick="toggleUploadPanel()">⬆ Aktualizovat data</button>
   </div>
 
-  <div class="upload-panel" id="upload-panel" style="display:none">
-    <h3>Zdroj dat — nahrání nové tabulky</h3>
-    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+  <div class="upload-panel" id="upload-panel">
+    <h3>Aktualizace dat — nahrání nové tabulky</h3>
+    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()"
+         ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
       <p>Přetáhněte soubor xlsx sem nebo klikněte pro výběr</p>
-      <small>Podporované formáty: .xlsx &nbsp;·&nbsp; List: <strong>PO II G def</strong></small>
+      <span class="upload-hint">Podporované formáty: .xlsx &nbsp;·&nbsp; List: <strong>PO II G def</strong></span>
     </div>
-    <input type="file" id="file-input" accept=".xlsx" style="display:none" onchange="handleFile(this.files[0])">
+    <input type="file" id="file-input" accept=".xlsx" onchange="handleFileSelect(event)">
     <div class="upload-actions">
-      <button class="btn-dl" id="btn-download" style="display:none" onclick="downloadJson()">⬇ Stáhnout listiny_data.json</button>
+      <button class="btn-action btn-green" id="btn-download-json" onclick="downloadJson()" disabled>⬇ Stáhnout JSON</button>
+      <button class="btn-action btn-blue" id="btn-save-server" onclick="saveToServer()" disabled>☁ Uložit na server</button>
       <span class="upload-status" id="upload-status"></span>
+      <span class="upload-status" id="save-status"></span>
     </div>
   </div>
 
@@ -149,7 +160,7 @@ html, body { background: var(--bg); color: var(--text); font-family: 'Lora', Geo
   </div>
 
   <div class="table-info">
-    <span id="table-count">0 listin</span> | <span id="table-pages">0 stran</span>
+    <span id="table-count">Načítání…</span> | <span id="table-pages"></span>
   </div>
 
   <div class="table-wrapper">
@@ -158,61 +169,224 @@ html, body { background: var(--bg); color: var(--text); font-family: 'Lora', Geo
         <tr>
           <th>Datum</th>
           <th>Místo</th>
-          <th>Regest</th>
+          <th>Regest-de</th>
           <th>Instituce</th>
           <th>Auth.</th>
         </tr>
       </thead>
-      <tbody id="table-body"></tbody>
+      <tbody id="table-body">
+        <tr><td colspan="5" class="loading">Načítání dat…</td></tr>
+      </tbody>
     </table>
   </div>
   <div class="pagination" id="pagination"></div>
 </div>
 
+<!-- SheetJS pro parsování xlsx -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
 <script>
 let ALL_DATA = [];
-
+let pendingRows = null;
+let pendingJsonBlob = null;
 let currentPage = 1;
 const itemsPerPage = 50;
 
+const PERIODS = [
+  { label: "1246-1251", start: 1246, end: 1251 },
+  { label: "1251-1253", start: 1251, end: 1253 },
+  { label: "1253-1260", start: 1253, end: 1260 },
+  { label: "1260-1270", start: 1260, end: 1270 },
+  { label: "1270-1276", start: 1270, end: 1276 },
+  { label: "1276-1278", start: 1276, end: 1278 }
+];
+
+// --- Načtení dat ---
+
+async function loadData() {
+  try {
+    const resp = await fetch('listiny_data.json?v=' + Date.now());
+    if (resp.ok) {
+      ALL_DATA = await resp.json();
+      initFilters();
+      updateTable();
+      return;
+    }
+  } catch (_) {}
+
+  document.getElementById('table-body').innerHTML =
+    '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--accent)">Nepodařilo se načíst data. Nahrajte soubor xlsx tlačítkem "Aktualizovat data".</td></tr>';
+  document.getElementById('table-count').textContent = 'Data nejsou dostupná';
+  document.getElementById('table-pages').textContent = '';
+}
+
+// --- Upload panel ---
+
+function toggleUploadPanel() {
+  const panel = document.getElementById('upload-panel');
+  panel.classList.toggle('open');
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.add('dragover');
+}
+
+function handleDragLeave(e) {
+  document.getElementById('upload-zone').classList.remove('dragover');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) processXlsx(file);
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) processXlsx(file);
+}
+
+function processXlsx(file) {
+  if (!file.name.match(/\.xlsx$/i)) {
+    setUploadStatus('Chyba: podporován je pouze formát .xlsx', 'error');
+    return;
+  }
+
+  setUploadStatus('Zpracovávám soubor…', '');
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      // Čteme konkrétní list PO II G def, fallback na první list
+      const ws = wb.Sheets['PO II G def'] || wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: null });
+
+      if (!rows.length) {
+        setUploadStatus('Chyba: tabulka je prázdná', 'error');
+        return;
+      }
+
+      ALL_DATA = rows;
+      pendingRows = rows;
+      const jsonStr = JSON.stringify(rows, null, null);
+      pendingJsonBlob = new Blob([jsonStr], { type: 'application/json' });
+
+      document.getElementById('btn-download-json').disabled = false;
+      document.getElementById('btn-save-server').disabled = false;
+      document.getElementById('save-status').textContent = '';
+      setUploadStatus(`✓ Načteno ${rows.length} záznamů z „${file.name}"`, 'success');
+
+      initFilters();
+      updateTable();
+    } catch (err) {
+      setUploadStatus('Chyba při zpracování souboru: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function downloadJson() {
+  if (!pendingJsonBlob) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(pendingJsonBlob);
+  a.download = 'listiny_data.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function saveToServer() {
+  if (!pendingRows) return;
+
+  const btn = document.getElementById('btn-save-server');
+  btn.disabled = true;
+
+  const endpoints = [
+    'save_listiny_data.php'
+  ];
+
+  for (const url of endpoints) {
+    setSaveStatus(`Ukládám na server…`, '');
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pendingRows)
+      });
+      const text = await resp.text();
+      let result;
+      try { result = JSON.parse(text); } catch(_) {
+        setSaveStatus(`Chyba (${url}): server vrátil nečekanou odpověď: ${text.substring(0, 120)}`, 'error');
+        btn.disabled = false;
+        return;
+      }
+      if (result.ok) {
+        setSaveStatus('✓ ' + result.message, 'success');
+        btn.disabled = false;
+        return;
+      } else {
+        setSaveStatus(`Chyba (${url}): ${result.error}`, 'error');
+        btn.disabled = false;
+        return;
+      }
+    } catch (e) {
+      setSaveStatus(`Endpoint ${url} nedostupný (${e.message})`, 'error');
+    }
+  }
+
+  setSaveStatus('Nepodařilo se spojit se serverem. Zkontrolujte že save_listiny_data.php je ve stejné složce.', 'error');
+  btn.disabled = false;
+}
+
+function setSaveStatus(msg, type) {
+  const el = document.getElementById('save-status');
+  el.textContent = msg;
+  el.className = 'upload-status' + (type ? ' ' + type : '');
+}
+
+function setUploadStatus(msg, type) {
+  const el = document.getElementById('upload-status');
+  el.textContent = msg;
+  el.className = 'upload-status' + (type ? ' ' + type : '');
+}
+
+// --- Filtry a tabulka ---
+
 function initFilters() {
-  // Periody – přímo z dat
-  const select = document.getElementById('periode-select');
-  const periods = [...new Set(ALL_DATA.map(d => d.Periode).filter(Boolean))].sort();
-  periods.forEach(p => {
+  const periodeSelect = document.getElementById('periode-select');
+  periodeSelect.innerHTML = '<option value="">Všechna</option>';
+  PERIODS.forEach(p => {
     const opt = document.createElement('option');
-    opt.value = p;
-    opt.textContent = p;
-    select.appendChild(opt);
+    opt.value = p.label;
+    opt.textContent = p.label;
+    periodeSelect.appendChild(opt);
   });
-  
-  // Místa
+
   const places = new Set();
   ALL_DATA.forEach(d => {
-    if (d.lokalitat_name && d.lokalitat_name !== '???') {
-      places.add(d.lokalitat_name);
-    }
+    if (d.lokalitat_name && d.lokalitat_name !== '???') places.add(d.lokalitat_name);
   });
   const placeSelect = document.getElementById('place-select');
+  placeSelect.innerHTML = '<option value="">Všechna</option>';
   Array.from(places).sort().forEach(place => {
     const opt = document.createElement('option');
     opt.value = place;
     opt.textContent = place;
     placeSelect.appendChild(opt);
   });
-  
-  // Instituce
+
   const institutions = new Set();
   ALL_DATA.forEach(d => {
     if (d.beschenkte_institution_text) {
       let inst = d.beschenkte_institution_text;
-      if (inst.length > 40) {
-        inst = inst.substring(0, 37) + '...';
-      }
+      if (inst.length > 40) inst = inst.substring(0, 37) + '...';
       institutions.add(inst);
     }
   });
   const instSelect = document.getElementById('institution-select');
+  instSelect.innerHTML = '<option value="">Všechny</option>';
   Array.from(institutions).sort().forEach(inst => {
     const opt = document.createElement('option');
     opt.value = inst;
@@ -227,44 +401,29 @@ function getFilteredData() {
   const place = document.getElementById('place-select').value;
   const regestSearch = document.getElementById('regest-search').value.toLowerCase();
   const institution = document.getElementById('institution-select').value;
-  
+
   return ALL_DATA.filter(d => {
     if (issuer && d.poII_aussteller !== issuer) return false;
-    
     if (periode && d.Periode !== periode) return false;
-    
     if (place && d.lokalitat_name !== place) return false;
-    
+
     if (regestSearch) {
       const regest = (d.kurzes_regest || '').toLowerCase();
-      if (!regest.includes(regestSearch)) {
-        return false;
-      }
+      if (!regest.includes(regestSearch)) return false;
     }
-    
+
     if (institution) {
       let instCheck = d.beschenkte_institution_text;
-      if (instCheck && instCheck.length > 40) {
-        instCheck = instCheck.substring(0, 37) + '...';
-      }
+      if (instCheck && instCheck.length > 40) instCheck = instCheck.substring(0, 37) + '...';
       if (instCheck !== institution) return false;
     }
-    
+
     return true;
   });
 }
 
-function updateTable() {
-  currentPage = 1;
-  const data = getFilteredData();
-  const totalPages = Math.ceil(data.length / itemsPerPage);
-  const start = (currentPage - 1) * itemsPerPage;
-  const pageData = data.slice(start, start + itemsPerPage);
-  
-  document.getElementById('table-count').textContent = data.length + ' listin';
-  document.getElementById('table-pages').textContent = totalPages + ' stran';
-  
-  const rows = pageData.map(d => `
+function renderRows(pageData) {
+  return pageData.map(d => `
     <tr>
       <td><strong>${d.datum_text || '?'}</strong></td>
       <td>${d.lokalitat_name || '?'}</td>
@@ -273,51 +432,48 @@ function updateTable() {
       <td>${d.verfalscht ? '✗' : '✓'}</td>
     </tr>
   `).join('');
-  
-  document.getElementById('table-body').innerHTML = rows || '<tr><td colspan="5" style="text-align: center; padding: 20px;">Žádné listiny</td></tr>';
-  
+}
+
+function updateTable() {
+  currentPage = 1;
+  const data = getFilteredData();
+  const totalPages = Math.ceil(data.length / itemsPerPage);
+  const pageData = data.slice(0, itemsPerPage);
+
+  document.getElementById('table-count').textContent = data.length + ' listin';
+  document.getElementById('table-pages').textContent = totalPages + ' stran';
+  document.getElementById('table-body').innerHTML =
+    renderRows(pageData) || '<tr><td colspan="5" style="text-align:center;padding:20px">Žádné listiny</td></tr>';
+
   updatePagination(totalPages);
 }
 
 function updatePagination(totalPages) {
   const paginationDiv = document.getElementById('pagination');
-  
-  if (totalPages <= 1) {
-    paginationDiv.innerHTML = '';
-    return;
-  }
-  
+  if (totalPages <= 1) { paginationDiv.innerHTML = ''; return; }
+
   let html = '';
-  
-  if (currentPage > 1) {
-    html += `<button onclick="goToPage(${currentPage - 1})">← Pred</button>`;
-  }
-  
+  if (currentPage > 1) html += `<button onclick="goToPage(${currentPage - 1})">← Před</button>`;
+
   const startPage = Math.max(1, currentPage - 2);
   const endPage = Math.min(totalPages, currentPage + 2);
-  
+
   if (startPage > 1) {
     html += '<button onclick="goToPage(1)">1</button>';
-    if (startPage > 2) html += '<span>...</span>';
+    if (startPage > 2) html += '<span>…</span>';
   }
-  
+
   for (let i = startPage; i <= endPage; i++) {
-    if (i === currentPage) {
-      html += `<button class="active" onclick="goToPage(${i})">${i}</button>`;
-    } else {
-      html += `<button onclick="goToPage(${i})">${i}</button>`;
-    }
+    html += `<button class="${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
   }
-  
+
   if (endPage < totalPages) {
-    if (endPage < totalPages - 1) html += '<span>...</span>';
+    if (endPage < totalPages - 1) html += '<span>…</span>';
     html += `<button onclick="goToPage(${totalPages})">${totalPages}</button>`;
   }
-  
-  if (currentPage < totalPages) {
-    html += `<button onclick="goToPage(${currentPage + 1})">Dal →</button>`;
-  }
-  
+
+  if (currentPage < totalPages) html += `<button onclick="goToPage(${currentPage + 1})">Dal →</button>`;
+
   paginationDiv.innerHTML = html;
 }
 
@@ -327,18 +483,8 @@ function goToPage(page) {
   const totalPages = Math.ceil(data.length / itemsPerPage);
   const start = (currentPage - 1) * itemsPerPage;
   const pageData = data.slice(start, start + itemsPerPage);
-  
-  const rows = pageData.map(d => `
-    <tr>
-      <td><strong>${d.datum_text || '?'}</strong></td>
-      <td>${d.lokalitat_name || '?'}</td>
-      <td><small>${(d.kurzes_regest || '').substring(0, 80)}</small></td>
-      <td><small>${(d.beschenkte_institution_text || '').substring(0, 50)}</small></td>
-      <td>${d.verfalscht ? '✗' : '✓'}</td>
-    </tr>
-  `).join('');
-  
-  document.getElementById('table-body').innerHTML = rows;
+
+  document.getElementById('table-body').innerHTML = renderRows(pageData);
   updatePagination(totalPages);
   document.querySelector('.table-wrapper').scrollIntoView({ behavior: 'smooth' });
 }
@@ -358,89 +504,7 @@ document.getElementById('place-select').addEventListener('change', updateTable);
 document.getElementById('regest-search').addEventListener('input', updateTable);
 document.getElementById('institution-select').addEventListener('change', updateTable);
 
-fetch('listiny_data.json')
-  .then(r => r.json())
-  .then(data => {
-    ALL_DATA = data;
-    initFilters();
-    updateTable();
-  });
-
-// ─── Upload & parse xlsx ──────────────────────────────────────────────────────
-
-let parsedJson = null;
-
-function toggleUploadPanel() {
-  const p = document.getElementById('upload-panel');
-  p.style.display = p.style.display === 'none' ? 'block' : 'none';
-}
-
-const dropZone = document.getElementById('drop-zone');
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file) handleFile(file);
-});
-
-function handleFile(file) {
-  if (!file || !file.name.endsWith('.xlsx')) {
-    setStatus('Neplatný soubor — očekáváno .xlsx', 'err');
-    return;
-  }
-  setStatus('Načítám…', '');
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-      const sheetName = 'PO II G def';
-      if (!wb.Sheets[sheetName]) {
-        setStatus('List "' + sheetName + '" nebyl nalezen v souboru.', 'err');
-        return;
-      }
-      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: null });
-      const COLS = ['no','sicherheit','Periode','datum_text','tag_post','monat_post','jahr_post',
-        'feiertag','lokalitat_name','lokalitat_x','lokalitat_y','lokalitat_region',
-        'lokalität_histland','kurzes_regest','beschenkte_institution_text',
-        'bi1_lokalitatname','bi1_x','bi1_y','bi1_region','bi1_histland',
-        'bi2_lokalitatname','bi2_region','bi2_histland',
-        'bi3_lokalitatname','bi3_region','poII_aussteller','verfalscht'];
-      parsedJson = rows
-        .filter(r => r['no'] != null)
-        .map(r => {
-          const d = {};
-          COLS.forEach(k => { let v = r[k]; d[k] = (v === 'xxx' || v === '') ? null : (v ?? null); });
-          return d;
-        });
-      document.getElementById('btn-download').style.display = 'inline-block';
-      setStatus('✓ Načteno ' + parsedJson.length + ' záznamů z listu "' + sheetName + '"', 'ok');
-      // Aktualizuj live data na stránce
-      ALL_DATA = parsedJson;
-      initFilters();
-      updateTable();
-    } catch(err) {
-      setStatus('Chyba při parsování: ' + err.message, 'err');
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-function downloadJson() {
-  if (!parsedJson) return;
-  const blob = new Blob([JSON.stringify(parsedJson, null, null)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'listiny_data.json';
-  a.click();
-}
-
-function setStatus(msg, type) {
-  const el = document.getElementById('upload-status');
-  el.textContent = msg;
-  el.className = 'upload-status' + (type ? ' ' + type : '');
-}
+loadData();
 </script>
 
 </body>
