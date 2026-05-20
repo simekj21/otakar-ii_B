@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Seznam listin — Itinerář Otakara II.</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root {
   --bg: #f5f3ef;
@@ -66,14 +67,49 @@ html, body { background: var(--bg); color: var(--text); font-family: 'Lora', Geo
   .data-table td { padding: 6px 8px; }
   .btn-reset { padding: 10px 12px; }
 }
+
+.header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.btn-update { padding: 8px 16px; background: white; color: var(--accent); border: 2px solid white; border-radius: 4px; font-family: 'Montserrat', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; text-transform: uppercase; white-space: nowrap; }
+.btn-update:hover { background: rgba(255,255,255,0.85); }
+
+.upload-panel { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px; }
+.upload-panel h3 { font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 16px; letter-spacing: 0.5px; }
+.drop-zone { border: 2px dashed var(--border2); border-radius: 6px; padding: 32px 20px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+.drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: var(--accent-bg); }
+.drop-zone p { color: var(--accent); font-size: 14px; margin-bottom: 6px; }
+.drop-zone small { color: var(--text3); font-size: 12px; }
+.upload-actions { display: flex; gap: 10px; margin-top: 14px; align-items: center; flex-wrap: wrap; }
+.btn-dl { padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 4px; font-family: 'Montserrat', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; text-transform: uppercase; }
+.btn-dl:hover { background: var(--accent2); }
+.upload-status { font-size: 12px; color: var(--text3); font-family: 'Montserrat', sans-serif; }
+.upload-status.ok { color: #3a8a3a; }
+.upload-status.err { color: var(--accent2); }
 </style>
 </head>
 <body>
 
 <div class="container">
   <div class="header">
-    <h1>📋 Seznam listin Otakara II.</h1>
-    <p>Veškeré listiny s pokročilým filtrováním a stránkováním</p>
+    <div class="header-row">
+      <div>
+        <h1>📋 Seznam listin Otakara II.</h1>
+        <p>Veškeré listiny s pokročilým filtrováním a stránkováním</p>
+      </div>
+      <button class="btn-update" onclick="toggleUploadPanel()">↑ Aktualizovat data</button>
+    </div>
+  </div>
+
+  <div class="upload-panel" id="upload-panel" style="display:none">
+    <h3>Zdroj dat — nahrání nové tabulky</h3>
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <p>Přetáhněte soubor xlsx sem nebo klikněte pro výběr</p>
+      <small>Podporované formáty: .xlsx &nbsp;·&nbsp; List: <strong>PO II G def</strong></small>
+    </div>
+    <input type="file" id="file-input" accept=".xlsx" style="display:none" onchange="handleFile(this.files[0])">
+    <div class="upload-actions">
+      <button class="btn-dl" id="btn-download" style="display:none" onclick="downloadJson()">⬇ Stáhnout listiny_data.json</button>
+      <span class="upload-status" id="upload-status"></span>
+    </div>
   </div>
 
   <div class="filters">
@@ -329,6 +365,82 @@ fetch('listiny_data.json')
     initFilters();
     updateTable();
   });
+
+// ─── Upload & parse xlsx ──────────────────────────────────────────────────────
+
+let parsedJson = null;
+
+function toggleUploadPanel() {
+  const p = document.getElementById('upload-panel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+
+function handleFile(file) {
+  if (!file || !file.name.endsWith('.xlsx')) {
+    setStatus('Neplatný soubor — očekáváno .xlsx', 'err');
+    return;
+  }
+  setStatus('Načítám…', '');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const sheetName = 'PO II G def';
+      if (!wb.Sheets[sheetName]) {
+        setStatus('List "' + sheetName + '" nebyl nalezen v souboru.', 'err');
+        return;
+      }
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: null });
+      const COLS = ['no','sicherheit','Periode','datum_text','tag_post','monat_post','jahr_post',
+        'feiertag','lokalitat_name','lokalitat_x','lokalitat_y','lokalitat_region',
+        'lokalität_histland','kurzes_regest','beschenkte_institution_text',
+        'bi1_lokalitatname','bi1_x','bi1_y','bi1_region','bi1_histland',
+        'bi2_lokalitatname','bi2_region','bi2_histland',
+        'bi3_lokalitatname','bi3_region','poII_aussteller','verfalscht'];
+      parsedJson = rows
+        .filter(r => r['no'] != null)
+        .map(r => {
+          const d = {};
+          COLS.forEach(k => { let v = r[k]; d[k] = (v === 'xxx' || v === '') ? null : (v ?? null); });
+          return d;
+        });
+      document.getElementById('btn-download').style.display = 'inline-block';
+      setStatus('✓ Načteno ' + parsedJson.length + ' záznamů z listu "' + sheetName + '"', 'ok');
+      // Aktualizuj live data na stránce
+      ALL_DATA = parsedJson;
+      initFilters();
+      updateTable();
+    } catch(err) {
+      setStatus('Chyba při parsování: ' + err.message, 'err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function downloadJson() {
+  if (!parsedJson) return;
+  const blob = new Blob([JSON.stringify(parsedJson, null, null)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'listiny_data.json';
+  a.click();
+}
+
+function setStatus(msg, type) {
+  const el = document.getElementById('upload-status');
+  el.textContent = msg;
+  el.className = 'upload-status' + (type ? ' ' + type : '');
+}
 </script>
 
 </body>
